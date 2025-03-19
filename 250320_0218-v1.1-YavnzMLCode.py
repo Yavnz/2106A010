@@ -1,3 +1,17 @@
+# Date: 20 March 2025, 02:18
+# Version: 1.1
+# Name of Programmer: Yavuz Emre Gormus
+# School ID: 2106A010
+# School: Yildiz Technical University
+# Department: Mechatronics Engineering 100%
+# Owner of Base Gui: Ertugrul Bayraktar
+
+"""
+v1.1 Patch Notes:
+- Handling Missing Values selection added (No Handling, Mean Imputation, Interpolation, Forward/Backward Fill.)
+- Missing values algorithm added.
+"""
+
 import sys
 import numpy as np
 import pandas as pd
@@ -21,6 +35,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score, mean_squared_error, confusion_matrix
+from sklearn.impute import SimpleImputer
 import tensorflow as tf
 from tensorflow.keras import layers, models, optimizers
 
@@ -83,7 +98,8 @@ class MLCourseGUI(QMainWindow):
             
             # Apply scaling if selected
             self.apply_scaling()
-            
+            self.handle_missing_values()
+
             self.status_bar.showMessage(f"Loaded {dataset_name}")
             
         except Exception as e:
@@ -119,7 +135,8 @@ class MLCourseGUI(QMainWindow):
                     
                     # Apply scaling if selected
                     self.apply_scaling()
-                    
+                    self.handle_missing_values()
+
                     self.status_bar.showMessage(f"Loaded custom dataset: {file_name}")
                     
         except Exception as e:
@@ -165,7 +182,7 @@ class MLCourseGUI(QMainWindow):
         """Create the data loading and preprocessing section"""
         data_group = QGroupBox("Data Management")
         data_layout = QHBoxLayout()
-        
+
         # Dataset selection
         self.dataset_combo = QComboBox()
         self.dataset_combo.addItems([
@@ -181,6 +198,16 @@ class MLCourseGUI(QMainWindow):
         # Data loading button
         self.load_btn = QPushButton("Load Data")
         self.load_btn.clicked.connect(self.load_custom_data)
+
+        # Missing values handling
+        self.missing_values_combo = QComboBox()
+        self.missing_values_combo.addItems([
+            "No Handling",
+            "Mean Imputation",
+            "Interpolation",
+            "Forward Fill",
+            "Backward Fill"
+        ])
         
         # Preprocessing options
         self.scaling_combo = QComboBox()
@@ -201,6 +228,8 @@ class MLCourseGUI(QMainWindow):
         data_layout.addWidget(QLabel("Dataset:"))
         data_layout.addWidget(self.dataset_combo)
         data_layout.addWidget(self.load_btn)
+        data_layout.addWidget(QLabel("Handling Missing Values:"))
+        data_layout.addWidget(self.missing_values_combo)
         data_layout.addWidget(QLabel("Scaling:"))
         data_layout.addWidget(self.scaling_combo)
         data_layout.addWidget(QLabel("Test Split:"))
@@ -234,7 +263,7 @@ class MLCourseGUI(QMainWindow):
         """Create the classical machine learning algorithms tab"""
         widget = QWidget()
         layout = QGridLayout(widget)
-        
+
         # Regression section
         regression_group = QGroupBox("Regression")
         regression_layout = QVBoxLayout()
@@ -310,7 +339,7 @@ class MLCourseGUI(QMainWindow):
         layout.addWidget(classification_group, 0, 1)
         
         return widget
-    
+
     def create_dim_reduction_tab(self):
         """Create the dimensionality reduction tab"""
         widget = QWidget()
@@ -887,6 +916,40 @@ class MLCourseGUI(QMainWindow):
         """Show error message dialog"""
         QMessageBox.critical(self, "Error", message)
 
+    def handle_missing_values(self):
+        """Apply selected missing data handling method."""
+        method = self.missing_values_combo.currentText()
+
+        # Controlling data load part
+        if self.X_train is None or self.X_test is None:
+            return
+
+        # Selecting methods part
+        if method == "No Handling":
+            return
+
+        elif method == "Mean Imputation":
+            imputer = SimpleImputer(strategy="mean")
+
+        elif method == "Interpolation":
+            self.X_train = pd.DataFrame(self.X_train).interpolate().values
+            self.X_test = pd.DataFrame(self.X_test).interpolate().values
+            return
+
+        elif method == "Forward Fill":
+            self.X_train = pd.DataFrame(self.X_train).fillna(method="ffill").values
+            self.X_test = pd.DataFrame(self.X_test).fillna(method="ffill").values
+            return
+
+        elif method == "Backward Fill":
+            self.X_train = pd.DataFrame(self.X_train).fillna(method="bfill").values
+            self.X_test = pd.DataFrame(self.X_test).fillna(method="bfill").values
+            return
+
+        # Processing part
+        self.X_train = imputer.fit_transform(self.X_train)
+        self.X_test = imputer.transform(self.X_test)
+
 def main():
     """Main function to start the application"""
     app = QApplication(sys.argv)
@@ -896,4 +959,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
