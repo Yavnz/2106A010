@@ -4,6 +4,28 @@
 
 ---
 
+**New Addings by Yavuz Emre Görmüş**
+
+v1.3 Patch Notes:
+- Boston Housing Dataset deleted because no longer supported.
+- California Housing Dataset added. (only working with linear regression)
+- Linear Regression algorithm fixed.
+
+v1.2 Patch Notes:
+- New GUI sections added.
+- Naive Bayes algorithm added.
+- Naive Bayes prior algorithm added.
+- SVM algorithm and all SVM things added.
+- Logistic Regression algorithm added.
+- K-Nearest Neighbor algorithm added.
+- Visualising results and datas added.
+
+v1.1 Patch Notes:
+- Handling Missing Values selection added (No Handling, Mean Imputation, Interpolation, Forward/Backward Fill.)
+- Missing values algorithm added.
+
+---
+
 ## 🚀 Overview
 
 This repository provides a base GUI framework for students to develop and integrate machine learning methods. The GUI is built using PyQt6 and supports various classical machine learning and deep learning techniques. Students will extend this GUI by adding necessary functionalities over time.
