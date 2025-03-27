@@ -1,5 +1,5 @@
-# Date: 27 March 2025, 15:56
-# Version: 1.2
+# Date: 27 March 2025, 22:05
+# Version: 1.3
 # Name of Programmer: Yavuz Emre Gormus
 # School ID: 2106A010
 # School: Yildiz Technical University
@@ -7,6 +7,11 @@
 # Owner of Base Gui: Ertugrul Bayraktar
 
 """
+v1.3 Patch Notes:
+- Boston Housing Dataset deleted because no longer supported.
+- California Housing Dataset added. (only working with linear regression)
+- Linear Regression algorithm fixed.
+
 v1.2 Patch Notes:
 - New GUI sections added.
 - Naive Bayes algorithm added.
@@ -14,6 +19,7 @@ v1.2 Patch Notes:
 - SVM algorithm and all SVM things added.
 - Logistic Regression algorithm added.
 - K-Nearest Neighbor algorithm added.
+- Visualising results and datas added.
 
 v1.1 Patch Notes:
 - Handling Missing Values selection added (No Handling, Mean Imputation, Interpolation, Forward/Backward Fill.)
@@ -96,8 +102,9 @@ class MLCourseGUI(QMainWindow):
                 data = datasets.load_breast_cancer()
             elif dataset_name == "Digits Dataset":
                 data = datasets.load_digits()
-            elif dataset_name == "Boston Housing Dataset":
-                data = datasets.load_boston()
+            elif dataset_name == "California Housing Dataset":
+                data = fetch_california_housing()
+                data.target = data.target.reshape(-1, 1)  # Reshape target for consistency
             elif dataset_name == "MNIST Dataset":
                 (X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
                 self.X_train, self.X_test = X_train, X_test
@@ -207,7 +214,7 @@ class MLCourseGUI(QMainWindow):
             "Iris Dataset",
             "Breast Cancer Dataset",
             "Digits Dataset",
-            "Boston Housing Dataset",
+            "California Housing Dataset",
             "MNIST Dataset"
         ])
         self.dataset_combo.currentIndexChanged.connect(self.load_dataset)
@@ -300,8 +307,7 @@ class MLCourseGUI(QMainWindow):
         # Linear Regression
         lr_group = self.create_algorithm_group(
             "Linear Regression",
-            {"fit_intercept": "checkbox",
-             "normalize": "checkbox"}
+            {"fit_intercept": "checkbox"}
         )
         regression_layout.addWidget(lr_group)
 
@@ -775,7 +781,7 @@ class MLCourseGUI(QMainWindow):
         """Train selected model with parameters"""
         try:
             # Set loss function based on model type
-            if name in ["Linear Regression"]:
+            if name == "Linear Regression":
                 loss_name = self.regression_loss_combo.currentText()
                 if loss_name == "Mean Squared Error (MSE)":
                     self.current_loss_function = mean_squared_error
@@ -1058,25 +1064,25 @@ class MLCourseGUI(QMainWindow):
         """Update metrics display"""
         metrics_text = "Model Performance Metrics:\n\n"
 
-        # Calculate appropriate metrics based on problem type
-        if len(np.unique(self.y_test)) > 10:  # Regression
+        # Check if current model is Linear Regression
+        if isinstance(self.current_model, LinearRegression):
             mse = mean_squared_error(self.y_test, y_pred)
             rmse = np.sqrt(mse)
             r2 = self.current_model.score(self.X_test, self.y_test)
-
+            
             metrics_text += f"Mean Squared Error: {mse:.4f}\n"
             metrics_text += f"Root Mean Squared Error: {rmse:.4f}\n"
             metrics_text += f"R² Score: {r2:.4f}"
-
-            # Add selected loss function value
-            if self.current_loss_function:
+            
+            if hasattr(self, 'current_loss_function') and self.current_loss_function:
+                current_loss = self.regression_loss_combo.currentText()
                 loss_value = self.current_loss_function(self.y_test, y_pred)
-                metrics_text += f"\nSelected Loss Function ({self.current_loss}): {loss_value:.4f}"
-
-        else:  # Classification
+                metrics_text += f"\nSelected Loss Function ({current_loss}): {loss_value:.4f}"
+        
+        elif len(np.unique(self.y_test)) <= 10:  # Classification
             accuracy = accuracy_score(self.y_test, y_pred)
             conf_matrix = confusion_matrix(self.y_test, y_pred)
-
+            
             metrics_text += f"Accuracy: {accuracy:.4f}\n\n"
             metrics_text += "Confusion Matrix:\n"
             metrics_text += str(conf_matrix)
@@ -1146,9 +1152,6 @@ class MLCourseGUI(QMainWindow):
         self.X_train = imputer.fit_transform(self.X_train)
         self.X_test = imputer.transform(self.X_test)
 
-
-
-
 def main():
     """Main function to start the application"""
     app = QApplication(sys.argv)
@@ -1158,4 +1161,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-  
