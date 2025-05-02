@@ -1,5 +1,5 @@
-# Date: 02 May 2025, 16:00
-# Version: 2.1
+# Date: 02 May 2025, 17:30
+# Version: 2.2
 # Name of Programmer: Yavuz Emre Gormus
 # School ID: 2106A010
 # School: Yildiz Technical University
@@ -7,7 +7,15 @@
 # Owner of Base Gui: Ertugrul Bayraktar
 
 """
-v2.1 Patch Notes:
+v2.2 Patch Notes: 'Minor improvements/fixes for HW 1'
+- California Housing Data Set tried to fix.
+- Prior probability calculation improved.
+- SVM gamma parameter improved.
+- Linear Regression algorithm improved.
+- Data size control added for Linear Regression.
+- Huber Loss fixed.
+
+v2.1 Patch Notes: 'Homework 2 Patch'
 - Advanced Analysis Tab added.
 - PCA Analysis added.
 - t-SNE Analysis added.
@@ -102,7 +110,8 @@ class MLCourseGUI(QMainWindow):
         """Load selected dataset"""
         try:
             dataset_name = self.dataset_combo.currentText()
-            
+            test_size = self.split_spin.value()
+
             if dataset_name == "Load Custom Dataset":
                 return
             
@@ -115,7 +124,13 @@ class MLCourseGUI(QMainWindow):
                 data = datasets.load_digits()
             elif dataset_name == "California Housing Dataset":
                 data = fetch_california_housing()
-                data.target = data.target.reshape(-1, 1)  # Reshape target for consistency
+                self.X_train, self.X_test, self.y_train, self.y_test = \
+                    model_selection.train_test_split(
+                        data.data,
+                        data.target,
+                        test_size=test_size,
+                        random_state=42
+                    )
             elif dataset_name == "MNIST Dataset":
                 (X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
                 self.X_train, self.X_test = X_train, X_test
@@ -544,6 +559,11 @@ class MLCourseGUI(QMainWindow):
                     widget.setToolTip("Enter comma-separated probabilities that sum to 1.0\n"
                                     "Example: 0.3,0.7 for binary classification")
 
+            elif name == "Support Vector Machine" and param_name == "gamma":
+                widget = QComboBox()
+                gamma_options = ["scale", "auto"] + [str(0.1 * i) for i in range(1, 11)]
+                widget.addItems(gamma_options)
+
             param_layout.addWidget(widget)
             param_widgets[param_name] = widget
             layout.addLayout(param_layout)
@@ -794,15 +814,33 @@ class MLCourseGUI(QMainWindow):
         try:
             # Set loss function based on model type
             if name == "Linear Regression":
+                if len(self.y_train.shape) > 1:
+                    self.y_train = self.y_train.ravel()
+                    self.y_test = self.y_test.ravel()
+
+                params = {
+                    'fit_intercept': param_widgets[
+                        'fit_intercept'].isChecked() if 'fit_intercept' in param_widgets else True
+                }
+
+                self.current_model = LinearRegression(**params)
+                self.current_model.fit(self.X_train, self.y_train)
+                y_pred = self.current_model.predict(self.X_test)
+
                 loss_name = self.regression_loss_combo.currentText()
                 if loss_name == "Mean Squared Error (MSE)":
                     self.current_loss_function = mean_squared_error
                 elif loss_name == "Mean Absolute Error (MAE)":
                     self.current_loss_function = lambda y_true, y_pred: np.mean(np.abs(y_true - y_pred))
                 elif loss_name == "Huber Loss":
-                    self.current_loss_function = lambda y_true, y_pred: tf.keras.losses.Huber()(y_true, y_pred).numpy()
-            elif name in ["Logistic Regression", "Support Vector Machine", "Naive Bayes"]:
-                loss_name = self.classification_loss_combo.currentText()
+                    delta = 1.0
+                    self.current_loss_function = lambda y_true, y_pred: np.where(
+                        np.abs(y_true - y_pred) <= delta,
+                        0.5 * np.square(y_true - y_pred),
+                        delta * np.abs(y_true - y_pred) - 0.5 * delta ** 2
+                    ).mean()
+                elif name in ["Logistic Regression", "Support Vector Machine", "Naive Bayes"]:
+                    loss_name = self.classification_loss_combo.currentText()
                 if loss_name == "Cross-Entropy Loss":
                     self.current_loss_function = lambda y_true, y_pred: -np.mean(y_true * np.log(y_pred + 1e-10))
                 elif loss_name == "Hinge Loss":
@@ -829,7 +867,7 @@ class MLCourseGUI(QMainWindow):
                             priors = [float(p.strip()) for p in priors_text.split(',')]
 
                             # Validate probabilities
-                            if abs(sum(priors) - 1.0) > 1e-10:
+                            if abs(1.0 - sum(priors)) > 1e-6:
                                 raise ValueError("Probabilities must sum to 1.0")
 
                             # Check if number of priors matches number of classes
@@ -1080,16 +1118,21 @@ class MLCourseGUI(QMainWindow):
         if isinstance(self.current_model, LinearRegression):
             mse = mean_squared_error(self.y_test, y_pred)
             rmse = np.sqrt(mse)
+            mae = np.mean(np.abs(self.y_test - y_pred))
             r2 = self.current_model.score(self.X_test, self.y_test)
-            
+
+            metrics_text = "Model Performance Metrics:\n\n"
             metrics_text += f"Mean Squared Error: {mse:.4f}\n"
             metrics_text += f"Root Mean Squared Error: {rmse:.4f}\n"
+            metrics_text += f"Mean Absolute Error: {mae:.4f}\n"
             metrics_text += f"R² Score: {r2:.4f}"
-            
-            if hasattr(self, 'current_loss_function') and self.current_loss_function:
+
+            if hasattr(self, 'current_loss_function'):
                 current_loss = self.regression_loss_combo.currentText()
                 loss_value = self.current_loss_function(self.y_test, y_pred)
-                metrics_text += f"\nSelected Loss Function ({current_loss}): {loss_value:.4f}"
+                metrics_text += f"\n\nSelected Loss ({current_loss}): {loss_value:.4f}"
+
+            self.metrics_text.setText(metrics_text)
         
         elif len(np.unique(self.y_test)) <= 10:  # Classification
             accuracy = accuracy_score(self.y_test, y_pred)
