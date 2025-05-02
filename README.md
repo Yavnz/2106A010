@@ -6,6 +6,21 @@
 
 **New Addings by Yavuz Emre Görmüş**
 
+v2.2 Patch Notes: 'Minor improvements/fixes for HW 1'
+- California Housing Data Set tried to fix.
+- Prior probability calculation improved.
+- SVM gamma parameter improved.
+- Linear Regression algorithm improved.
+- Data size control added for Linear Regression.
+- Huber Loss fixed.
+
+v2.1 Patch Notes: 'Homework 2 Patch'
+- Advanced Analysis Tab added.
+- PCA Analysis added.
+- t-SNE Analysis added.
+- UMAP Analysis added.
+- K-fold cross-validation added.
+
 v1.3 Patch Notes:
 - Boston Housing Dataset deleted because no longer supported.
 - California Housing Dataset added. (only working with linear regression)
