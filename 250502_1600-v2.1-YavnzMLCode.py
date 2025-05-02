@@ -1,5 +1,5 @@
-# Date: 27 March 2025, 22:05
-# Version: 1.3
+# Date: 02 May 2025, 16:00
+# Version: 2.1
 # Name of Programmer: Yavuz Emre Gormus
 # School ID: 2106A010
 # School: Yildiz Technical University
@@ -7,6 +7,15 @@
 # Owner of Base Gui: Ertugrul Bayraktar
 
 """
+v2.1 Patch Notes:
+- Advanced Analysis Tab added.
+- PCA Analysis added.
+- t-SNE Analysis added.
+- UMAP Analysis added.
+- K-fold cross-validation added.
+
+-------------------------------------------------------------------------
+
 v1.3 Patch Notes:
 - Boston Housing Dataset deleted because no longer supported.
 - California Housing Dataset added. (only working with linear regression)
@@ -54,6 +63,8 @@ from sklearn.datasets import fetch_california_housing
 import tensorflow as tf
 from tensorflow.keras import layers, models, optimizers
 from tkinter import ttk
+import umap.umap_ as umap
+from sklearn.manifold import TSNE
 
 class MLCourseGUI(QMainWindow):
     def __init__(self):
@@ -271,7 +282,8 @@ class MLCourseGUI(QMainWindow):
             ("Classical ML", self.create_classical_ml_tab),
             ("Deep Learning", self.create_deep_learning_tab),
             ("Dimensionality Reduction", self.create_dim_reduction_tab),
-            ("Reinforcement Learning", self.create_rl_tab)
+            ("Reinforcement Learning", self.create_rl_tab),
+            ("Advanced Analysis", self.create_advanced_analysis_tab)
         ]
         
         for tab_name, create_func in tabs:
@@ -1151,6 +1163,205 @@ class MLCourseGUI(QMainWindow):
         # Processing part
         self.X_train = imputer.fit_transform(self.X_train)
         self.X_test = imputer.transform(self.X_test)
+
+    def create_advanced_analysis_tab(self):
+        """advanced analysis tab with PCA, t-SNE, UMAP and K-fold cross validation"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+
+        # Dimensionality Reduction Section
+        dim_group = QGroupBox("Dimensionality Reduction")
+        dim_layout = QGridLayout()
+
+        # PCA Controls
+        self.pca_components = QSpinBox()
+        self.pca_components.setRange(1, 10)
+        self.pca_components.setValue(2)
+
+        self.variance_threshold = QDoubleSpinBox()
+        self.variance_threshold.setRange(0.1, 0.99)
+        self.variance_threshold.setValue(0.95)
+        self.variance_threshold.setSingleStep(0.05)
+
+        dim_layout.addWidget(QLabel("PCA Components:"), 0, 0)
+        dim_layout.addWidget(self.pca_components, 0, 1)
+        dim_layout.addWidget(QLabel("Variance Threshold:"), 1, 0)
+        dim_layout.addWidget(self.variance_threshold, 1, 1)
+
+        # t-SNE Controls
+        self.perplexity = QDoubleSpinBox()
+        self.perplexity.setRange(5.0, 50.0)
+        self.perplexity.setValue(30.0)
+        dim_layout.addWidget(QLabel("t-SNE Perplexity:"), 2, 0)
+        dim_layout.addWidget(self.perplexity, 2, 1)
+
+        # UMAP Controls
+        self.n_neighbors = QSpinBox()
+        self.n_neighbors.setRange(2, 100)
+        self.n_neighbors.setValue(15)
+        dim_layout.addWidget(QLabel("UMAP Neighbors:"), 3, 0)
+        dim_layout.addWidget(self.n_neighbors, 3, 1)
+
+        self.run_pca_btn = QPushButton("Run PCA")
+        self.run_tsne_btn = QPushButton("Run t-SNE")
+        self.run_umap_btn = QPushButton("Run UMAP")
+
+        dim_layout.addWidget(self.run_pca_btn, 4, 0)
+        dim_layout.addWidget(self.run_tsne_btn, 4, 1)
+        dim_layout.addWidget(self.run_umap_btn, 4, 2)
+
+        dim_group.setLayout(dim_layout)
+        layout.addWidget(dim_group)
+
+        # Cross Validation Section
+        cv_group = QGroupBox("Cross Validation")
+        cv_layout = QGridLayout()
+
+        # K-Fold Controls
+        self.k_folds = QSpinBox()
+        self.k_folds.setRange(2, 10)
+        self.k_folds.setValue(5)
+
+        cv_layout.addWidget(QLabel("K-Folds:"), 0, 0)
+        cv_layout.addWidget(self.k_folds, 0, 1)
+
+        # Split Ratio Controls
+        self.train_ratio = QDoubleSpinBox()
+        self.train_ratio.setRange(0.5, 0.9)
+        self.train_ratio.setValue(0.7)
+        self.train_ratio.setSingleStep(0.05)
+
+        cv_layout.addWidget(QLabel("Train Ratio:"), 1, 0)
+        cv_layout.addWidget(self.train_ratio, 1, 1)
+
+        self.run_cv_btn = QPushButton("Run Cross Validation")
+        cv_layout.addWidget(self.run_cv_btn, 2, 0, 1, 2)
+
+        cv_group.setLayout(cv_layout)
+        layout.addWidget(cv_group)
+
+        self.run_pca_btn.clicked.connect(self.run_pca_analysis)
+        self.run_tsne_btn.clicked.connect(self.run_tsne_analysis)
+        self.run_umap_btn.clicked.connect(self.run_umap_analysis)
+        self.run_cv_btn.clicked.connect(self.run_cross_validation)
+
+        return widget
+
+    def run_pca_analysis(self):
+        """PCA analysis function"""
+        try:
+            n_components = self.pca_components.value()
+            variance_threshold = self.variance_threshold.value()
+
+            # PCA thing
+            pca = PCA()
+            X_pca = pca.fit_transform(self.X_train)
+
+            # Calculation
+            explained_variance_ratio = pca.explained_variance_ratio_
+            cumulative_variance_ratio = np.cumsum(explained_variance_ratio)
+
+            # Graph
+            self.figure.clear()
+            ax1 = self.figure.add_subplot(211)
+            ax1.plot(range(1, len(explained_variance_ratio) + 1), cumulative_variance_ratio, 'bo-')
+            ax1.axhline(y=variance_threshold, color='r', linestyle='--')
+            ax1.set_xlabel('Component Amount')
+            ax1.set_ylabel('Cumulative Total Exp. Var.')
+            ax1.set_title('PCA Variance Analysis')
+
+            if X_pca.shape[1] >= 2:
+                ax2 = self.figure.add_subplot(212)
+                scatter = ax2.scatter(X_pca[:, 0], X_pca[:, 1], c=self.y_train)
+                ax2.set_xlabel('Primary Component')
+                ax2.set_ylabel('Secondary Component')
+                ax2.set_title('2D PCA Graph')
+                self.figure.colorbar(scatter)
+
+            self.figure.tight_layout()
+            self.canvas.draw()
+
+            metrics_text = "PCA Analysis Result:\n\n"
+            for i, ratio in enumerate(explained_variance_ratio[:n_components]):
+                metrics_text += f"Components {i + 1}: {ratio:.4f}\n"
+            metrics_text += f"\nTotal Explained Variance: {sum(explained_variance_ratio[:n_components]):.4f}"
+            self.metrics_text.setText(metrics_text)
+
+        except Exception as e:
+            self.show_error(f"PCA Analysis Error!: {str(e)}")
+
+    def run_tsne_analysis(self):
+        """t-SNE Analysis"""
+        try:
+            perplexity = self.perplexity.value()
+
+            # t-SNE thing
+            tsne = TSNE(n_components=2, perplexity=perplexity)
+            X_tsne = tsne.fit_transform(self.X_train)
+
+            # Graph
+            self.figure.clear()
+            ax = self.figure.add_subplot(111)
+            scatter = ax.scatter(X_tsne[:, 0], X_tsne[:, 1], c=self.y_train)
+            ax.set_title('t-SNE Graph')
+            self.figure.colorbar(scatter)
+            self.canvas.draw()
+
+        except Exception as e:
+            self.show_error(f"t-SNE Analysis Error!: {str(e)}")
+
+    def run_umap_analysis(self):
+        """UMAP Analysis"""
+        try:
+            n_neighbors = self.n_neighbors.value()
+
+            # UMAP thing
+            reducer = umap.UMAP(n_neighbors=n_neighbors)
+            X_umap = reducer.fit_transform(self.X_train)
+
+            # Graph
+            self.figure.clear()
+            ax = self.figure.add_subplot(111)
+            scatter = ax.scatter(X_umap[:, 0], X_umap[:, 1], c=self.y_train)
+            ax.set_title('UMAP Graph')
+            self.figure.colorbar(scatter)
+            self.canvas.draw()
+
+        except Exception as e:
+            self.show_error(f"UMAP Analysis Error!: {str(e)}")
+
+    def run_cross_validation(self):
+        """K-fold cross validation"""
+        try:
+            from sklearn.model_selection import KFold
+            k_folds = self.k_folds.value()
+
+            if self.current_model is None:
+                self.show_error("Please train a model first at 'Classical ML Tab'.")
+                return
+
+            # K-fold CV thing
+            kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+            scores = []
+
+            for fold, (train_idx, val_idx) in enumerate(kf.split(self.X_train)):
+                X_fold_train, X_fold_val = self.X_train[train_idx], self.X_train[val_idx]
+                y_fold_train, y_fold_val = self.y_train[train_idx], self.y_train[val_idx]
+
+                self.current_model.fit(X_fold_train, y_fold_train)
+                score = self.current_model.score(X_fold_val, y_fold_val)
+                scores.append(score)
+
+            # New Results
+            metrics_text = "Cross Validation Results:\n\n"
+            for i, score in enumerate(scores):
+                metrics_text += f"Fold {i + 1}: {score:.4f}\n"
+            metrics_text += f"\nMean: {np.mean(scores):.4f}"
+            metrics_text += f"\nStandard Deviation: {np.std(scores):.4f}"
+            self.metrics_text.setText(metrics_text)
+
+        except Exception as e:
+            self.show_error(f"Cross Validation Error!: {str(e)}")
 
 def main():
     """Main function to start the application"""
