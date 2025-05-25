@@ -6,6 +6,14 @@
 
 **New Addings by Yavuz Emre Görmüş**
 
+v3 Patch Notes:
+- Adding Deep Learning Tab.
+-- Dense, Conv2D, LTSM layers added.
+-- Training Configurations added.
+- Gan Training added.
+- Logs added.
+- Info of Datasets added.
+
 v2.2 Patch Notes: 'Minor improvements/fixes for HW 1'
 - California Housing Data Set tried to fix.
 - Prior probability calculation improved.
